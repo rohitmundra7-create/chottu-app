@@ -33,7 +33,19 @@
 
   .client-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
   .client-row .meta{color:var(--ink-soft);font-size:11.5px;}
-  .link-btn{background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;}
+  .link-btn{background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:11.5px;cursor:pointer;margin-left:6px;}
+
+  select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;}
+  .paytype{display:flex;gap:8px;margin-top:10px;}
+  .paytype button{flex:1;padding:9px;border-radius:6px;border:1px solid var(--line);background:#fff;font-size:12.5px;cursor:pointer;font-weight:600;color:var(--ink-soft);}
+  .paytype button.active{background:var(--leaf);color:#fff;border-color:var(--leaf);}
+
+  .pay-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .pay-row .status{font-size:10.5px;padding:3px 9px;border-radius:10px;font-weight:600;color:#fff;}
+  .status.ok{background:var(--leaf);}
+  .status.due{background:var(--turmeric);}
+  .status.overdue{background:var(--vermillion);}
+  .pay-row .meta{color:var(--ink-soft);font-size:11.5px;margin-top:2px;}
 </style>
 </head>
 <body>
@@ -79,6 +91,27 @@ Amul Milk 500ml, 29, packet, 🥛, 8"></textarea>
   </div>
 
   <div class="card">
+    <h2>3. Payment Record Karo</h2>
+    <label>Client select karo</label>
+    <select id="paymentClientSelect"></select>
+    <label>Amount (₹)</label>
+    <input type="number" id="paymentAmount" placeholder="jaise: 399">
+    <div class="paytype">
+      <button data-type="setup" id="typeSetup">Setup Fee</button>
+      <button data-type="monthly" class="active" id="typeMonthly">Monthly</button>
+    </div>
+    <label>Note (optional)</label>
+    <input type="text" id="paymentNote" placeholder="jaise: October month ka payment">
+    <button class="btn leaf" id="addPaymentBtn">Payment Record Karo</button>
+    <div class="result" id="paymentResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>Payment Status — Saare Clients</h2>
+    <div id="paymentStatusList"></div>
+  </div>
+
+  <div class="card">
     <h2>Saare Clients</h2>
     <div id="clientsList"></div>
   </div>
@@ -98,12 +131,18 @@ document.getElementById('gateBtn').addEventListener('click', ()=>{
 });
 
 let allClients = [];
+let allPayments = [];
+let selectedPaymentType = 'monthly';
 
 async function loadClients(){
   const { data } = await supabaseClient.from('clients').select('*').order('created_at', {ascending:false});
   allClients = data || [];
+  const { data: payments } = await supabaseClient.from('subscription_payments').select('*').order('paid_on', {ascending:false});
+  allPayments = payments || [];
   renderClientsList();
   renderClientSelect();
+  renderPaymentClientSelect();
+  renderPaymentStatus();
 }
 
 function renderClientsList(){
@@ -123,6 +162,82 @@ function renderClientsList(){
 function renderClientSelect(){
   const sel = document.getElementById('clientSelect');
   sel.innerHTML = allClients.map(c=>`<option value="${c.id}">${c.shop_name}</option>`).join('');
+}
+
+function renderPaymentClientSelect(){
+  const sel = document.getElementById('paymentClientSelect');
+  sel.innerHTML = allClients.map(c=>`<option value="${c.id}">${c.shop_name}</option>`).join('');
+}
+
+document.querySelectorAll('.paytype button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.paytype button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPaymentType = btn.dataset.type;
+  });
+});
+
+document.getElementById('addPaymentBtn').addEventListener('click', async ()=>{
+  const clientId = document.getElementById('paymentClientSelect').value;
+  const amount = parseFloat(document.getElementById('paymentAmount').value);
+  const note = document.getElementById('paymentNote').value.trim();
+  const resultEl = document.getElementById('paymentResult');
+
+  if(!clientId || !amount){
+    resultEl.className = 'result err';
+    resultEl.textContent = 'Client aur amount zaroori hai';
+    return;
+  }
+
+  const { error } = await supabaseClient.from('subscription_payments').insert({
+    client_id: clientId,
+    amount: amount,
+    payment_type: selectedPaymentType,
+    note: note
+  });
+
+  if(error){
+    resultEl.className = 'result err';
+    resultEl.textContent = 'Error: ' + error.message;
+    return;
+  }
+  resultEl.className = 'result ok';
+  resultEl.textContent = `✓ ₹${amount} record ho gaya`;
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentNote').value = '';
+  loadClients();
+});
+
+function renderPaymentStatus(){
+  const box = document.getElementById('paymentStatusList');
+  if(!allClients.length){ box.innerHTML = '<div style="color:var(--ink-soft);font-size:13px;">Koi client nahi hai abhi</div>'; return; }
+
+  box.innerHTML = allClients.map(c=>{
+    const clientPayments = allPayments.filter(p=>p.client_id===c.id && p.payment_type==='monthly');
+    const lastPayment = clientPayments[0];
+    let statusHtml = '';
+    if(!lastPayment){
+      statusHtml = `<span class="status due">Koi monthly payment nahi</span>`;
+    } else {
+      const daysSince = Math.floor((new Date() - new Date(lastPayment.paid_on)) / (1000*60*60*24));
+      if(daysSince <= 30){
+        statusHtml = `<span class="status ok">Paid — ${daysSince} din pehle</span>`;
+      } else if(daysSince <= 40){
+        statusHtml = `<span class="status due">Due — ${daysSince} din ho gaye</span>`;
+      } else {
+        statusHtml = `<span class="status overdue">Overdue — ${daysSince} din ho gaye</span>`;
+      }
+    }
+    return `
+      <div class="pay-row">
+        <div>
+          <div>${c.shop_name}</div>
+          <div class="meta">${lastPayment ? 'Last paid: ' + lastPayment.paid_on + ' · ₹' + lastPayment.amount : 'Abhi tak payment nahi mila'}</div>
+        </div>
+        ${statusHtml}
+      </div>
+    `;
+  }).join('');
 }
 
 document.getElementById('addClientBtn').addEventListener('click', async ()=>{
