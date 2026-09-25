@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chottu</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<style>
+  :root{
+    --paper:#FDFBF4; --ink:#2B2620; --ink-soft:#6B6255;
+    --turmeric:#C68A1F; --vermillion:#B23A2E; --leaf:#4A7A5B;
+    --line:#E4DCC8; --card:#FFFFFF; --wa:#25D366;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;padding:16px 14px 76px;}
+  .wrap{max-width:480px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  header h1{font-size:20px;margin:0;font-weight:700;}
+  header h1 span{color:var(--vermillion);}
+  .earn{text-align:right;}
+  .earn .amt{font-size:15px;font-weight:700;color:var(--leaf);}
+  .earn .lbl{font-size:9.5px;color:var(--ink-soft);}
+  .logoutbtn{background:none;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:11px;color:var(--ink-soft);cursor:pointer;}
+
+  /* LOGIN SCREEN */
+  .login-wrap{max-width:340px;margin:60px auto;padding:0 16px;text-align:center;}
+  .login-wrap h1{font-size:26px;margin-bottom:4px;}
+  .login-wrap h1 span{color:var(--vermillion);}
+  .login-wrap p{color:var(--ink-soft);font-size:13px;margin-bottom:24px;}
+  .login-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;}
+  .login-card input{width:100%;padding:12px;margin-bottom:10px;border:1px solid var(--line);border-radius:8px;font-size:14.5px;}
+  .login-card button{width:100%;padding:13px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;}
+  .login-err{color:var(--vermillion);font-size:12.5px;margin-top:10px;display:none;}
+
+  .tabs{display:flex;gap:5px;margin-bottom:14px;background:#F1EADB;border-radius:10px;padding:4px;}
+  .tab{flex:1;text-align:center;padding:9px 2px;cursor:pointer;font-size:11px;font-weight:600;color:var(--ink-soft);border-radius:8px;}
+  .tab.active{background:#fff;color:var(--ink);}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .savetick{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--leaf);color:#fff;padding:8px 16px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;}
+  .savetick.show{opacity:1;}
+
+  .lowalert{background:#FCEDEB;border:1px solid var(--vermillion);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--vermillion);margin-bottom:12px;display:none;}
+  .loading{text-align:center;color:var(--ink-soft);font-size:13px;padding:30px 0;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .card h2{font-size:13.5px;margin:0 0 10px;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;}
+
+  .item-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;}
+  .item-card.low{border-color:var(--vermillion);}
+  .item-card .em{font-size:24px;}
+  .item-card .info{flex:1;}
+  .item-card .nm{font-size:13.5px;font-weight:600;}
+  .item-card .qty{font-size:18px;font-weight:700;color:var(--leaf);margin-top:2px;}
+  .item-card .qty.low{color:var(--vermillion);}
+  .item-card .qty .unit{font-size:10.5px;font-weight:400;color:var(--ink-soft);}
+  .stepper{display:flex;align-items:center;gap:5px;}
+  .stepper button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:17px;font-weight:700;cursor:pointer;color:var(--ink);}
+  .stepper button.minus{color:var(--vermillion);}
+  .stepper button.plus{color:var(--leaf);}
+
+  .searchrow{display:flex;gap:8px;margin-bottom:12px;}
+  .searchbox{flex:1;position:relative;}
+  .searchbox input{width:100%;padding:11px 11px 11px 36px;border:1px solid var(--line);border-radius:10px;font-size:14.5px;background:#fff;color:var(--ink);}
+  .searchbox .icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--ink-soft);}
+  .grid-items{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .tile{border:1px solid var(--line);border-radius:10px;padding:10px 5px;text-align:center;cursor:pointer;position:relative;background:#fff;}
+  .tile.low{border-color:var(--vermillion);}
+  .tile .em{font-size:24px;}
+  .tile .nm{font-size:10.5px;margin-top:3px;font-weight:600;line-height:1.2;}
+  .tile .stockflag{font-size:8.5px;color:var(--vermillion);font-weight:700;}
+  .badge{position:absolute;top:-6px;right:-6px;background:var(--vermillion);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .cart-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .empty-cart{color:var(--ink-soft);font-size:12.5px;text-align:center;padding:8px 0;}
+  .totalline{display:flex;justify-content:space-between;font-weight:700;font-size:15px;padding:9px 0;border-top:1px solid var(--line);margin-top:6px;}
+  .custfields{display:flex;gap:8px;margin:10px 0;}
+  .custfields input{flex:1;padding:9px;border:1px solid var(--line);border-radius:6px;font-size:13px;}
+  .paymode{display:flex;gap:7px;margin-bottom:12px;}
+  .paymode button{flex:1;padding:8px;border-radius:6px;border:1px solid var(--line);background:#fff;font-size:12.5px;cursor:pointer;color:var(--ink-soft);font-weight:600;}
+  .paymode button.active[data-mode="cash"]{background:var(--leaf);color:#fff;border-color:var(--leaf);}
+  .paymode button.active[data-mode="upi"]{background:var(--turmeric);color:#fff;border-color:var(--turmeric);}
+  .paymode button.active[data-mode="udhaar"]{background:var(--vermillion);color:#fff;border-color:var(--vermillion);}
+  .confirmbtn{width:100%;padding:12px;background:var(--ink);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;}
+  .confirmbtn:disabled{background:#ccc;}
+
+  .receipt-shell{display:flex;flex-direction:column;align-items:center;margin-top:14px;}
+  .receipt{width:260px;background:#fff;font-family:'Courier New',monospace;font-size:12px;color:#222;padding:16px 14px 20px;box-shadow:0 2px 10px rgba(0,0,0,0.08);}
+  .r-center{text-align:center;}
+  .r-shop{font-weight:bold;font-size:14px;}
+  .r-divider{border-top:1px dashed #999;margin:8px 0;}
+  .r-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .r-total{font-weight:bold;font-size:13px;}
+  .r-foot{text-align:center;margin-top:8px;font-size:10.5px;color:#555;}
+
+  .bill-row{padding:10px 0;border-bottom:1px solid var(--line);}
+  .bill-top{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;}
+  .bill-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  .src-tag{font-size:9.5px;padding:2px 6px;border-radius:8px;color:#fff;background:var(--ink);}
+  .no-bills{color:var(--ink-soft);font-size:13px;text-align:center;padding:20px 0;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-wrap">
+  <h1>Chot<span>tu</span></h1>
+  <p>Apni dukaan mein login karo</p>
+  <div class="login-card">
+    <input type="text" id="loginUser" placeholder="Username">
+    <input type="password" id="loginPass" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <div class="login-err" id="loginErr">Galat username ya password</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="savetick" id="savetick">✓ Saved</div>
+<div class="wrap" id="mainApp" style="display:none;">
+  <header>
+    <h1>Chot<span>tu</span></h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="earn"><div class="amt" id="todayEarn">₹0</div><div class="lbl">AAJ KI KAMAI</div></div>
+      <button class="logoutbtn" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="counter">🛒 Counter</div>
+    <div class="tab" data-tab="stock">📦 Stock</div>
+    <div class="tab" data-tab="bills">🧾 Bills</div>
+  </div>
+
+  <!-- COUNTER -->
+  <div class="page active" id="page-counter">
+    <div class="searchrow">
+      <div class="searchbox"><span class="icon">🔍</span><input type="text" id="searchInput" placeholder="Item dhoondo..."></div>
+    </div>
+    <div class="grid-items" id="tapGrid"></div>
+    <div class="card">
+      <div id="cartLines"></div>
+      <div class="totalline"><span>Total</span><span id="cartTotal">₹0</span></div>
+      <div class="custfields">
+        <input type="text" id="custName" placeholder="Customer naam (optional)">
+      </div>
+      <div class="paymode">
+        <button data-mode="cash" class="active">Cash</button>
+        <button data-mode="upi">UPI</button>
+        <button data-mode="udhaar">Udhaar</button>
+      </div>
+      <button class="confirmbtn" id="confirmBtn" disabled>Order Pakka Karo + Bill Banao</button>
+    </div>
+    <div class="receipt-shell" id="receiptShell"></div>
+  </div>
+
+  <!-- STOCK -->
+  <div class="page" id="page-stock">
+    <div class="lowalert" id="lowalert"></div>
+    <div id="stockList" class="loading">Load ho raha hai...</div>
+  </div>
+
+  <!-- BILLS -->
+  <div class="page" id="page-bills">
+    <div class="card">
+      <h2>Saare Bills</h2>
+      <div id="billsRows"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentClient = null; // {id, shop_name, ...}
+let catalog = [];
+let bills = [];
+let cart = {};
+let searchTerm = "";
+let payMode = "cash";
+let todayEarnings = 0;
+
+// ---------- LOGIN ----------
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+async function doLogin(){
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+
+  const { data, error } = await supabaseClient
+    .from('clients')
+    .select('*')
+    .eq('login_username', username)
+    .eq('login_password', password)
+    .eq('active', true)
+    .maybeSingle();
+
+  if(error || !data){
+    errEl.style.display = 'block';
+    return;
+  }
+  currentClient = data;
+  localStorage.setItem('chottu_client_id', data.id);
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  loadAll();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('chottu_client_id');
+  location.reload();
+});
+
+async function tryAutoLogin(){
+  const savedId = localStorage.getItem('chottu_client_id');
+  if(!savedId) return;
+  const { data, error } = await supabaseClient.from('clients').select('*').eq('id', savedId).maybeSingle();
+  if(data){
+    currentClient = data;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    loadAll();
+  }
+}
+
+// ---------- DATA LOAD ----------
+async function loadAll(){
+  const { data: items } = await supabaseClient.from('items').select('*').eq('client_id', currentClient.id).order('name');
+  catalog = items || [];
+  const { data: billRows } = await supabaseClient.from('bills').select('*').eq('client_id', currentClient.id).order('created_at', {ascending:false});
+  bills = billRows || [];
+  todayEarnings = bills.filter(b=>b.payment_mode!=='udhaar').reduce((s,b)=>s+Number(b.total),0);
+  document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+  renderStockPage(); renderGrid(); renderCart(); renderBills();
+}
+
+function showSaved(){
+  const el = document.getElementById('savetick');
+  el.classList.add('show');
+  setTimeout(()=> el.classList.remove('show'), 900);
+}
+
+async function nextBillNo(){
+  return 'B-' + String(bills.length+1).padStart(4,'0');
+}
+
+async function recordBill(source, custName, lineItems, total, mode){
+  const billNo = await nextBillNo();
+  for(const it of lineItems){
+    const c = catalog.find(x=>x.name===it.name);
+    if(c){
+      const newQty = Math.max(0, Number(c.stock) - it.qty);
+      c.stock = newQty;
+      await supabaseClient.from('items').update({stock:newQty}).eq('id', c.id);
+    }
+  }
+  const bill = {
+    client_id: currentClient.id,
+    bill_no: billNo,
+    customer_name: custName,
+    items: lineItems,
+    total: total,
+    payment_mode: mode,
+    source: source
+  };
+  const { data, error } = await supabaseClient.from('bills').insert(bill).select().single();
+  if(data) bills.unshift(data);
+  if(mode !== 'udhaar') todayEarnings += total;
+  document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+  renderStockPage(); renderGrid(); renderBills();
+  showSaved();
+  return data || bill;
+}
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- STOCK PAGE ----------
+function renderStockPage(){
+  const listEl = document.getElementById('stockList');
+  listEl.className = '';
+  if(!catalog.length){
+    listEl.innerHTML = '<div class="loading">Koi item nahi hai abhi — apne admin se catalog add karwao</div>';
+    return;
+  }
+  listEl.innerHTML = catalog.map((item)=>`
+    <div class="item-card ${item.stock <= item.low_stock_threshold ? 'low' : ''}">
+      <div class="em">${item.emoji}</div>
+      <div class="info">
+        <div class="nm">${item.name}</div>
+        <div class="qty ${item.stock <= item.low_stock_threshold ? 'low' : ''}">${item.stock} <span class="unit">${item.unit}</span></div>
+      </div>
+      <div class="stepper">
+        <button class="minus" data-id="${item.id}" data-dir="-1">−</button>
+        <button class="plus" data-id="${item.id}" data-dir="1">+</button>
+      </div>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.stepper button').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const dir = parseInt(btn.dataset.dir);
+      const item = catalog.find(c=>c.id===id);
+      item.stock = Math.max(0, Number(item.stock) + dir);
+      renderStockPage(); renderGrid();
+      await supabaseClient.from('items').update({stock:item.stock}).eq('id', id);
+      showSaved();
+    });
+  });
+  const lowItems = catalog.filter(i=>i.stock <= i.low_stock_threshold);
+  const alertBox = document.getElementById('lowalert');
+  if(lowItems.length){
+    alertBox.style.display = 'block';
+    alertBox.textContent = `⚠️ Kam stock: ${lowItems.map(i=>i.name).join(', ')}`;
+  } else { alertBox.style.display = 'none'; }
+}
+
+// ---------- COUNTER PAGE ----------
+function renderGrid(){
+  const filtered = catalog.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const gridEl = document.getElementById('tapGrid');
+  if(!catalog.length){
+    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:16px 0;">Koi item nahi hai — admin se catalog add karwao</div>';
+    return;
+  }
+  gridEl.innerHTML = filtered.map(c=>`
+    <div class="tile ${c.stock <= c.low_stock_threshold ? 'low' : ''}" data-id="${c.id}">
+      ${cart[c.id] ? `<div class="badge">${cart[c.id]}</div>` : ''}
+      <div class="em">${c.emoji}</div>
+      <div class="nm">${c.name}</div>
+      ${c.stock <= c.low_stock_threshold ? `<div class="stockflag">Sirf ${c.stock}</div>` : ''}
+    </div>
+  `).join('') || '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:16px 0;">Kuch nahi mila</div>';
+  gridEl.querySelectorAll('.tile').forEach(tile=>{
+    tile.addEventListener('click', ()=>{
+      const id = tile.dataset.id;
+      const item = catalog.find(c=>c.id===id);
+      if((cart[id]||0) >= item.stock){ alert('Stock khatam!'); return; }
+      cart[id] = (cart[id]||0)+1;
+      renderGrid(); renderCart();
+    });
+  });
+}
+function renderCart(){
+  const lines = Object.entries(cart).map(([id,qty])=>{const item = catalog.find(c=>c.id===id); return {id, name:item.name, qty, amt:item.price*qty};});
+  document.getElementById('cartLines').innerHTML = lines.length
+    ? lines.map(l=>`<div class="cart-line"><span>${l.name} × ${l.qty}</span><span>₹${l.amt}</span></div>`).join('')
+    : '<div class="empty-cart">Item tap karo grid mein</div>';
+  const total = lines.reduce((s,l)=>s+l.amt,0);
+  document.getElementById('cartTotal').textContent = '₹'+total;
+  document.getElementById('confirmBtn').disabled = total === 0;
+}
+document.getElementById('searchInput').addEventListener('input', e=>{ searchTerm = e.target.value; renderGrid(); });
+document.querySelectorAll('.paymode button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.paymode button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); payMode = btn.dataset.mode;
+  });
+});
+
+function renderReceipt(bill){
+  document.getElementById('receiptShell').innerHTML = `
+    <div class="receipt">
+      <div class="r-center">
+        <div class="r-shop">${currentClient.shop_name}</div>
+      </div>
+      <div class="r-divider"></div>
+      <div class="r-row"><span>Bill No:</span><span>${bill.bill_no}</span></div>
+      <div class="r-row"><span>Customer:</span><span>${bill.customer_name}</span></div>
+      <div class="r-divider"></div>
+      ${bill.items.map(it=>`<div class="r-row"><span>${it.name} × ${it.qty}</span><span>₹${it.qty * (catalog.find(c=>c.name===it.name)?.price||0)}</span></div>`).join('')}
+      <div class="r-divider"></div>
+      <div class="r-row r-total"><span>TOTAL</span><span>₹${bill.total}</span></div>
+      <div class="r-row"><span>Payment:</span><span>${bill.payment_mode==='cash'?'Cash':bill.payment_mode==='upi'?'UPI':'Udhaar'}</span></div>
+      <div class="r-foot">Dhanyawad! 🙏</div>
+    </div>
+  `;
+}
+
+document.getElementById('confirmBtn').addEventListener('click', async ()=>{
+  const lines = Object.entries(cart).map(([id,qty])=>({name:catalog.find(c=>c.id===id).name, qty}));
+  const total = lines.reduce((s,l)=>{const c=catalog.find(x=>x.name===l.name);return s+c.price*l.qty;},0);
+  const custName = document.getElementById('custName').value.trim() || 'Walk-in Customer';
+  const bill = await recordBill('counter', custName, lines, total, payMode);
+  renderReceipt(bill);
+  cart = {};
+  document.getElementById('custName').value = '';
+  renderGrid(); renderCart();
+});
+
+// ---------- BILLS PAGE ----------
+function renderBills(){
+  const box = document.getElementById('billsRows');
+  if(!bills.length){ box.innerHTML = '<div class="no-bills">Abhi tak koi bill nahi bana</div>'; return; }
+  box.innerHTML = bills.map(b=>`
+    <div class="bill-row">
+      <div class="bill-top"><span>${b.bill_no} — ${b.customer_name}</span><span>₹${b.total}</span></div>
+      <div class="bill-sub">
+        <span>${new Date(b.created_at).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})} · ${b.items.map(it=>it.name+' x'+it.qty).join(', ')}</span>
+        <span class="src-tag">${b.source}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- INIT ----------
+tryAutoLogin();
+</script>
+</body>
+</html>
