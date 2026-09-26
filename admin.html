@@ -73,6 +73,8 @@
     <input type="text" id="loginUsername" placeholder="jaise: mahesh-kirana">
     <label>Login Password</label>
     <input type="text" id="loginPassword" placeholder="ek simple password set karo">
+    <label>UPI ID (optional — customer UPI se pay kar sake iske liye)</label>
+    <input type="text" id="upiId" placeholder="jaise: mahesh.kirana@okhdfcbank">
     <button class="btn" id="addClientBtn">Client Add Karo</button>
     <div class="result" id="clientResult"></div>
   </div>
@@ -81,11 +83,11 @@
     <h2>2. Catalog Add Karo (item name, price, unit, emoji, starting stock)</h2>
     <label>Client select karo</label>
     <select id="clientSelect" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;"></select>
-    <label>Items — ek line mein ek item, is format mein:<br>naam, price, unit, emoji, stock</label>
+    <label>Items — ek line mein ek item, is format mein:<br>naam, price, unit, emoji, stock, pack_size</label>
     <textarea id="catalogInput" placeholder="Bisleri 1L, 20, botal, 💧, 24
 Parle-G, 10, packet, 🍪, 40
-Amul Milk 500ml, 29, packet, 🥛, 8"></textarea>
-    <div class="hint">Emoji optional hai — chhod doge to 📦 use hoga</div>
+Gold Flake, 15, piece, 🚬, 100, 20"></textarea>
+    <div class="hint">Emoji optional hai (chhod doge to 📦 use hoga). Pack_size sirf un items ke liye jo box mein aate hain par piece mein bikte hain (jaise cigarette — box mein 20 aate hain to yahan 20 likho). Baaki items ke liye chhod do.</div>
     <button class="btn leaf" id="addCatalogBtn">Catalog Save Karo</button>
     <div class="result" id="catalogResult"></div>
   </div>
@@ -152,11 +154,21 @@ function renderClientsList(){
     <div class="client-row">
       <div>
         <div>${c.shop_name}</div>
-        <div class="meta">${c.owner_name || ''} · login: ${c.login_username}</div>
+        <div class="meta">${c.owner_name || ''} · login: ${c.login_username} · UPI: ${c.upi_id || 'nahi set hai'}</div>
       </div>
-      <button class="link-btn" onclick="navigator.clipboard.writeText(window.location.origin + '/index.html'); alert('App link copy ho gaya — client ko username/password ke saath bhejo')">Link Copy Karo</button>
+      <div>
+        <button class="link-btn" onclick="editUpi('${c.id}', '${c.upi_id||''}')">UPI Set Karo</button>
+        <button class="link-btn" onclick="navigator.clipboard.writeText(window.location.origin + '/index.html'); alert('App link copy ho gaya — client ko username/password ke saath bhejo')">Link Copy</button>
+      </div>
     </div>
   `).join('');
+}
+
+async function editUpi(clientId, currentUpi){
+  const newUpi = prompt('UPI ID daalo (jaise: name@okhdfcbank):', currentUpi);
+  if(newUpi === null) return;
+  await supabaseClient.from('clients').update({upi_id: newUpi.trim()}).eq('id', clientId);
+  loadClients();
 }
 
 function renderClientSelect(){
@@ -246,6 +258,7 @@ document.getElementById('addClientBtn').addEventListener('click', async ()=>{
   const phone = document.getElementById('ownerPhone').value.trim();
   const login_username = document.getElementById('loginUsername').value.trim();
   const login_password = document.getElementById('loginPassword').value.trim();
+  const upi_id = document.getElementById('upiId').value.trim();
   const resultEl = document.getElementById('clientResult');
 
   if(!shop_name || !login_username || !login_password){
@@ -255,7 +268,7 @@ document.getElementById('addClientBtn').addEventListener('click', async ()=>{
   }
 
   const { data, error } = await supabaseClient.from('clients').insert({
-    shop_name, owner_name, phone, login_username, login_password
+    shop_name, owner_name, phone, login_username, login_password, upi_id
   }).select().single();
 
   if(error){
@@ -270,6 +283,7 @@ document.getElementById('addClientBtn').addEventListener('click', async ()=>{
   document.getElementById('ownerPhone').value = '';
   document.getElementById('loginUsername').value = '';
   document.getElementById('loginPassword').value = '';
+  document.getElementById('upiId').value = '';
   loadClients();
 });
 
@@ -298,7 +312,8 @@ document.getElementById('addCatalogBtn').addEventListener('click', async ()=>{
       price: parseFloat(parts[1]) || 0,
       unit: parts[2] || 'piece',
       emoji: parts[3] || '📦',
-      stock: parseFloat(parts[4]) || 0
+      stock: parseFloat(parts[4]) || 0,
+      pack_size: parseFloat(parts[5]) || 1
     };
   });
 
