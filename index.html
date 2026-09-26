@@ -39,6 +39,10 @@
   .page{display:none;}
   .page.active{display:block;}
 
+  .subtabs{display:flex;gap:6px;margin-bottom:12px;}
+  .subtab{flex:1;text-align:center;padding:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-soft);border:1px solid var(--line);border-radius:8px;background:#fff;}
+  .subtab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
   .savetick{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--leaf);color:#fff;padding:8px 16px;border-radius:20px;font-size:12.5px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;}
   .savetick.show{opacity:1;}
 
@@ -47,10 +51,10 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
   .card h2{font-size:13.5px;margin:0 0 10px;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;}
 
-  .item-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;}
+  .item-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;}
   .item-card.low{border-color:var(--vermillion);}
   .item-card .em{font-size:24px;}
-  .item-card .info{flex:1;}
+  .item-card .info{flex:1;min-width:110px;}
   .item-card .nm{font-size:13.5px;font-weight:600;}
   .item-card .qty{font-size:18px;font-weight:700;color:var(--leaf);margin-top:2px;}
   .item-card .qty.low{color:var(--vermillion);}
@@ -59,6 +63,7 @@
   .stepper button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:17px;font-weight:700;cursor:pointer;color:var(--ink);}
   .stepper button.minus{color:var(--vermillion);}
   .stepper button.plus{color:var(--leaf);}
+  .stepper button.boxbtn{width:auto;padding:0 10px;font-size:11px;color:var(--turmeric);border-color:var(--turmeric);}
 
   .searchrow{display:flex;gap:8px;margin-bottom:12px;}
   .searchbox{flex:1;position:relative;}
@@ -92,12 +97,30 @@
   .r-row{display:flex;justify-content:space-between;margin-bottom:3px;}
   .r-total{font-weight:bold;font-size:13px;}
   .r-foot{text-align:center;margin-top:8px;font-size:10.5px;color:#555;}
+  .upi-box{margin-top:14px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;width:260px;}
+  .upi-box img{width:150px;height:150px;margin:8px auto;}
+  .upi-box a{display:block;background:var(--turmeric);color:#fff;text-decoration:none;padding:10px;border-radius:6px;font-size:13px;font-weight:600;margin-top:8px;}
 
   .bill-row{padding:10px 0;border-bottom:1px solid var(--line);}
   .bill-top{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;}
   .bill-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-top:3px;}
   .src-tag{font-size:9.5px;padding:2px 6px;border-radius:8px;color:#fff;background:var(--ink);}
   .no-bills{color:var(--ink-soft);font-size:13px;text-align:center;padding:20px 0;}
+
+  .udhaar-group{background:var(--card);border:1px solid var(--vermillion);border-radius:12px;padding:14px;margin-bottom:10px;}
+  .udhaar-group .uname{font-size:14px;font-weight:700;}
+  .udhaar-group .utotal{font-size:17px;font-weight:700;color:var(--vermillion);margin-top:2px;}
+  .udhaar-group .ubills{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+  .udhaar-group .ubill-line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line);}
+  .paidbtn{width:100%;padding:10px;background:var(--leaf);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;}
+
+  .additembtn{width:100%;padding:11px;background:none;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;}
+  .additem-form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;display:none;}
+  .additem-form input{width:100%;padding:9px;margin-bottom:8px;border:1px solid var(--line);border-radius:6px;font-size:13.5px;}
+  .additem-form .row2{display:flex;gap:8px;}
+  .additem-form .row2 input{flex:1;}
+  .additem-form .savebtn{width:100%;padding:11px;background:var(--leaf);color:#fff;border:none;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:4px;}
+  .additem-form .hint{font-size:11px;color:var(--ink-soft);margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -141,7 +164,10 @@
       <div id="cartLines"></div>
       <div class="totalline"><span>Total</span><span id="cartTotal">₹0</span></div>
       <div class="custfields">
-        <input type="text" id="custName" placeholder="Customer naam (optional)">
+        <input type="text" id="custName" placeholder="Customer naam (udhaar ke liye zaroori)">
+      </div>
+      <div class="custfields">
+        <input type="tel" id="custPhone" placeholder="Customer phone (WhatsApp pe UPI link bhejne ke liye)">
       </div>
       <div class="paymode">
         <button data-mode="cash" class="active">Cash</button>
@@ -156,20 +182,44 @@
   <!-- STOCK -->
   <div class="page" id="page-stock">
     <div class="lowalert" id="lowalert"></div>
+    <button class="additembtn" id="showAddItemBtn">+ Naya Item Add Karo</button>
+    <div class="additem-form" id="addItemForm">
+      <div class="hint">Naya item jo pehle catalog mein nahi tha</div>
+      <input type="text" id="newItemName" placeholder="Item ka naam (jaise: Gold Flake)">
+      <div class="row2">
+        <input type="number" id="newItemPrice" placeholder="Price (₹ per piece)">
+        <input type="text" id="newItemUnit" placeholder="Unit (jaise: piece)">
+      </div>
+      <div class="row2">
+        <input type="text" id="newItemEmoji" placeholder="Emoji (optional) 📦">
+        <input type="number" id="newItemStock" placeholder="Abhi kitna stock hai">
+      </div>
+      <input type="number" id="newItemPackSize" placeholder="1 box/packet mein kitne piece? (jaise cigarette ke liye 20) — chhod do agar loose nahi bikta">
+      <button class="savebtn" id="saveNewItemBtn">Item Save Karo</button>
+    </div>
     <div id="stockList" class="loading">Load ho raha hai...</div>
   </div>
 
   <!-- BILLS -->
   <div class="page" id="page-bills">
-    <div class="card">
-      <h2>Saare Bills</h2>
-      <div id="billsRows"></div>
+    <div class="subtabs">
+      <div class="subtab active" data-sub="all">Saare Bills</div>
+      <div class="subtab" data-sub="udhaar">Udhaar (Pending)</div>
+    </div>
+    <div class="subpage active" id="sub-all">
+      <div class="card">
+        <h2>Saare Bills</h2>
+        <div id="billsRows"></div>
+      </div>
+    </div>
+    <div class="subpage" id="sub-udhaar" style="display:none;">
+      <div id="udhaarRows"></div>
     </div>
   </div>
 </div>
 
 <script>
-let currentClient = null; // {id, shop_name, ...}
+let currentClient = null; // {id, shop_name, upi_id, ...}
 let catalog = [];
 let bills = [];
 let cart = {};
@@ -231,7 +281,7 @@ async function loadAll(){
   bills = billRows || [];
   todayEarnings = bills.filter(b=>b.payment_mode!=='udhaar').reduce((s,b)=>s+Number(b.total),0);
   document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
-  renderStockPage(); renderGrid(); renderCart(); renderBills();
+  renderStockPage(); renderGrid(); renderCart(); renderBills(); renderUdhaar();
 }
 
 function showSaved(){
@@ -244,7 +294,7 @@ async function nextBillNo(){
   return 'B-' + String(bills.length+1).padStart(4,'0');
 }
 
-async function recordBill(source, custName, lineItems, total, mode){
+async function recordBill(source, custName, lineItems, total, mode, custPhone){
   const billNo = await nextBillNo();
   for(const it of lineItems){
     const c = catalog.find(x=>x.name===it.name);
@@ -261,13 +311,15 @@ async function recordBill(source, custName, lineItems, total, mode){
     items: lineItems,
     total: total,
     payment_mode: mode,
-    source: source
+    source: source,
+    paid: mode !== 'udhaar',
+    customer_phone: custPhone || null
   };
   const { data, error } = await supabaseClient.from('bills').insert(bill).select().single();
   if(data) bills.unshift(data);
   if(mode !== 'udhaar') todayEarnings += total;
   document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
-  renderStockPage(); renderGrid(); renderBills();
+  renderStockPage(); renderGrid(); renderBills(); renderUdhaar();
   showSaved();
   return data || bill;
 }
@@ -281,13 +333,21 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.getElementById('page-'+tab.dataset.tab).classList.add('active');
   });
 });
+document.querySelectorAll('.subtab').forEach(st=>{
+  st.addEventListener('click', ()=>{
+    document.querySelectorAll('.subtab').forEach(s=>s.classList.remove('active'));
+    st.classList.add('active');
+    document.getElementById('sub-all').style.display = st.dataset.sub==='all' ? 'block':'none';
+    document.getElementById('sub-udhaar').style.display = st.dataset.sub==='udhaar' ? 'block':'none';
+  });
+});
 
 // ---------- STOCK PAGE ----------
 function renderStockPage(){
   const listEl = document.getElementById('stockList');
   listEl.className = '';
   if(!catalog.length){
-    listEl.innerHTML = '<div class="loading">Koi item nahi hai abhi — apne admin se catalog add karwao</div>';
+    listEl.innerHTML = '<div class="loading">Koi item nahi hai abhi — upar se naya item add karo</div>';
     return;
   }
   listEl.innerHTML = catalog.map((item)=>`
@@ -298,8 +358,9 @@ function renderStockPage(){
         <div class="qty ${item.stock <= item.low_stock_threshold ? 'low' : ''}">${item.stock} <span class="unit">${item.unit}</span></div>
       </div>
       <div class="stepper">
-        <button class="minus" data-id="${item.id}" data-dir="-1">−</button>
+        <button class="minus" data-id="${item.id}" data-dir="${-1}">−</button>
         <button class="plus" data-id="${item.id}" data-dir="1">+</button>
+        ${item.pack_size && item.pack_size > 1 ? `<button class="boxbtn" data-id="${item.id}" data-dir="${item.pack_size}">+1 box (${item.pack_size})</button>` : ''}
       </div>
     </div>
   `).join('');
@@ -322,12 +383,42 @@ function renderStockPage(){
   } else { alertBox.style.display = 'none'; }
 }
 
+// ---------- ADD NEW ITEM (client khud kar sakta hai) ----------
+document.getElementById('showAddItemBtn').addEventListener('click', ()=>{
+  const form = document.getElementById('addItemForm');
+  form.style.display = form.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('saveNewItemBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('newItemName').value.trim();
+  const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
+  const unit = document.getElementById('newItemUnit').value.trim() || 'piece';
+  const emoji = document.getElementById('newItemEmoji').value.trim() || '📦';
+  const stock = parseFloat(document.getElementById('newItemStock').value) || 0;
+  const packSize = parseFloat(document.getElementById('newItemPackSize').value) || 1;
+
+  if(!name){ alert('Item ka naam daalo'); return; }
+
+  const { data, error } = await supabaseClient.from('items').insert({
+    client_id: currentClient.id,
+    name, price, unit, emoji, stock, pack_size: packSize
+  }).select().single();
+
+  if(error){ alert('Error: ' + error.message); return; }
+  catalog.push(data);
+  renderStockPage(); renderGrid();
+  document.getElementById('addItemForm').style.display = 'none';
+  ['newItemName','newItemPrice','newItemUnit','newItemEmoji','newItemStock','newItemPackSize'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  showSaved();
+});
+
 // ---------- COUNTER PAGE ----------
 function renderGrid(){
   const filtered = catalog.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const gridEl = document.getElementById('tapGrid');
   if(!catalog.length){
-    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:16px 0;">Koi item nahi hai — admin se catalog add karwao</div>';
+    gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--ink-soft);font-size:13px;padding:16px 0;">Koi item nahi hai — Stock tab se naya item add karo</div>';
     return;
   }
   gridEl.innerHTML = filtered.map(c=>`
@@ -366,7 +457,7 @@ document.querySelectorAll('.paymode button').forEach(btn=>{
 });
 
 function renderReceipt(bill){
-  document.getElementById('receiptShell').innerHTML = `
+  let html = `
     <div class="receipt">
       <div class="r-center">
         <div class="r-shop">${currentClient.shop_name}</div>
@@ -382,16 +473,54 @@ function renderReceipt(bill){
       <div class="r-foot">Dhanyawad! 🙏</div>
     </div>
   `;
+  document.getElementById('receiptShell').innerHTML = html;
+
+  // UPI payment link/QR — only if UPI mode and client has upi_id set
+  if(bill.payment_mode === 'upi'){
+    if(currentClient.upi_id){
+      const upiLink = `upi://pay?pa=${encodeURIComponent(currentClient.upi_id)}&pn=${encodeURIComponent(currentClient.shop_name)}&am=${bill.total}&cu=INR&tn=${encodeURIComponent(bill.bill_no)}`;
+      const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
+      const custPhone = (bill.customer_phone || '').replace(/\D/g,'');
+      const waMessage = `${currentClient.shop_name}\nBill: ${bill.bill_no}\nAmount: ₹${bill.total}\n\nUPI se pay karo: ${currentClient.upi_id}\nYa is link pe click karo: ${upiLink}`;
+      const waLink = custPhone
+        ? `https://wa.me/91${custPhone}?text=${encodeURIComponent(waMessage)}`
+        : `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+
+      document.getElementById('receiptShell').insertAdjacentHTML('beforeend', `
+        <div class="upi-box">
+          <div style="font-size:13px;font-weight:600;">UPI se Payment Lo</div>
+          <img src="${qrImg}" alt="UPI QR">
+          <div style="font-size:11px;color:var(--ink-soft);">Dukaan pe ho to customer scan kare — WhatsApp order ho to niche se bhej do</div>
+          <a href="${waLink}" style="background:var(--wa);">📱 WhatsApp Pe Bhejo</a>
+          <a href="${upiLink}" style="margin-top:6px;">UPI App Kholo (khud test karne ke liye)</a>
+        </div>
+      `);
+    } else {
+      document.getElementById('receiptShell').insertAdjacentHTML('beforeend', `
+        <div class="upi-box" style="border-color:var(--vermillion);">
+          <div style="font-size:12.5px;color:var(--vermillion);">UPI ID set nahi hai — admin se apna UPI ID add karwao taaki QR/link ban sake</div>
+        </div>
+      `);
+    }
+  }
 }
 
 document.getElementById('confirmBtn').addEventListener('click', async ()=>{
   const lines = Object.entries(cart).map(([id,qty])=>({name:catalog.find(c=>c.id===id).name, qty}));
   const total = lines.reduce((s,l)=>{const c=catalog.find(x=>x.name===l.name);return s+c.price*l.qty;},0);
-  const custName = document.getElementById('custName').value.trim() || 'Walk-in Customer';
-  const bill = await recordBill('counter', custName, lines, total, payMode);
+  const custNameInput = document.getElementById('custName').value.trim();
+  const custPhoneInput = document.getElementById('custPhone').value.trim();
+
+  if(payMode === 'udhaar' && !custNameInput){
+    alert('Udhaar ke liye customer ka naam daalna zaroori hai');
+    return;
+  }
+  const custName = custNameInput || 'Walk-in Customer';
+  const bill = await recordBill('counter', custName, lines, total, payMode, custPhoneInput);
   renderReceipt(bill);
   cart = {};
   document.getElementById('custName').value = '';
+  document.getElementById('custPhone').value = '';
   renderGrid(); renderCart();
 });
 
@@ -404,10 +533,53 @@ function renderBills(){
       <div class="bill-top"><span>${b.bill_no} — ${b.customer_name}</span><span>₹${b.total}</span></div>
       <div class="bill-sub">
         <span>${new Date(b.created_at).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})} · ${b.items.map(it=>it.name+' x'+it.qty).join(', ')}</span>
-        <span class="src-tag">${b.source}</span>
+        <span class="src-tag">${b.paid===false ? 'UDHAAR' : (b.payment_mode||'').toUpperCase()}</span>
       </div>
     </div>
   `).join('');
+}
+
+// ---------- UDHAAR (PENDING) VIEW ----------
+function renderUdhaar(){
+  const box = document.getElementById('udhaarRows');
+  const pendingBills = bills.filter(b => b.paid === false);
+  if(!pendingBills.length){
+    box.innerHTML = '<div class="no-bills">Koi udhaar pending nahi hai 🎉</div>';
+    return;
+  }
+  const byCustomer = {};
+  pendingBills.forEach(b=>{
+    if(!byCustomer[b.customer_name]) byCustomer[b.customer_name] = [];
+    byCustomer[b.customer_name].push(b);
+  });
+
+  box.innerHTML = Object.entries(byCustomer).map(([name, custBills])=>{
+    const total = custBills.reduce((s,b)=>s+Number(b.total),0);
+    return `
+      <div class="udhaar-group">
+        <div class="uname">${name}</div>
+        <div class="utotal">₹${total} bakaya</div>
+        <div class="ubills">
+          ${custBills.map(b=>`<div class="ubill-line"><span>${b.bill_no} (${new Date(b.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})})</span><span>₹${b.total}</span></div>`).join('')}
+        </div>
+        <button class="paidbtn" data-customer="${name}">✓ Paisa Mil Gaya — Paid Karo</button>
+      </div>
+    `;
+  }).join('');
+
+  box.querySelectorAll('.paidbtn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const custName = btn.dataset.customer;
+      const idsToUpdate = bills.filter(b=>b.customer_name===custName && b.paid===false).map(b=>b.id);
+      await supabaseClient.from('bills').update({paid:true}).in('id', idsToUpdate);
+      bills.forEach(b=>{ if(idsToUpdate.includes(b.id)) b.paid = true; });
+      const settledTotal = bills.filter(b=>idsToUpdate.includes(b.id)).reduce((s,b)=>s+Number(b.total),0);
+      todayEarnings += settledTotal;
+      document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+      renderBills(); renderUdhaar();
+      showSaved();
+    });
+  });
 }
 
 // ---------- INIT ----------
