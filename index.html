@@ -116,6 +116,31 @@
   .udhaar-group .ubills{margin-top:8px;font-size:12px;color:var(--ink-soft);}
   .udhaar-group .ubill-line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line);}
   .paidbtn{width:100%;padding:10px;background:var(--leaf);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;}
+  .statementbtn{width:100%;padding:10px;background:var(--turmeric);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;}
+  .modal-overlay.show{display:flex;}
+  .statement-card{background:#fff;border-radius:12px;max-width:360px;width:100%;padding:18px;}
+  .statement-card .st-shop{font-size:16px;font-weight:800;text-align:center;}
+  .statement-card .st-sub{font-size:11px;color:var(--ink-soft);text-align:center;margin-bottom:6px;}
+  .statement-card .st-divider{border-top:1px dashed var(--line);margin:8px 0;}
+  .statement-card .st-cust{font-size:14px;font-weight:700;margin-bottom:2px;}
+  .statement-card .st-line{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line);}
+  .statement-card .st-line .st-items{display:block;font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+  .statement-card .st-total{display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:var(--vermillion);margin-top:10px;}
+  .statement-card .st-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .statement-card .st-actions button, .statement-card .st-actions a{display:block;text-align:center;width:100%;padding:11px;border:none;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;color:#fff;text-decoration:none;}
+  .statement-card .st-printbtn{background:var(--ink);}
+  .statement-card .st-wabtn{background:var(--wa);}
+  .statement-card .st-paidbtn{background:var(--leaf);}
+  .statement-card .st-closebtn{background:none;color:var(--ink-soft);border:1.5px solid var(--line)!important;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #statementCard, #statementCard *{visibility:visible;}
+    #statementCard{position:absolute;top:0;left:0;width:100%;}
+    .st-actions{display:none!important;}
+  }
 
   .additembtn{width:100%;padding:11px;background:none;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;}
   .additem-form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;display:none;}
@@ -222,6 +247,10 @@
       <div id="udhaarRows"></div>
     </div>
   </div>
+</div>
+
+<div class="modal-overlay" id="statementModal">
+  <div class="statement-card" id="statementCard"></div>
 </div>
 
 <script>
@@ -603,6 +632,7 @@ function renderUdhaar(){
         <div class="ubills">
           ${custBills.map(b=>`<div class="ubill-line"><span>${b.bill_no} (${new Date(b.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})})</span><span>₹${b.total}</span></div>`).join('')}
         </div>
+        <button class="statementbtn" data-customer="${name}">📄 Poora Bill Nikaalo</button>
         <button class="paidbtn" data-customer="${name}">✓ Paisa Mil Gaya — Paid Karo</button>
       </div>
     `;
@@ -610,15 +640,86 @@ function renderUdhaar(){
 
   box.querySelectorAll('.paidbtn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const custName = btn.dataset.customer;
-      const idsToUpdate = bills.filter(b=>b.customer_name===custName && b.paid===false).map(b=>b.id);
-      await supabaseClient.from('bills').update({paid:true}).in('id', idsToUpdate);
-      bills.forEach(b=>{ if(idsToUpdate.includes(b.id)) b.paid = true; });
-      computeEarnings();
-      renderBills(); renderUdhaar();
-      showSaved();
+      await settleUdhaar(btn.dataset.customer);
     });
   });
+
+  box.querySelectorAll('.statementbtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openStatement(btn.dataset.customer);
+    });
+  });
+}
+
+// ---------- UDHAAR STATEMENT (consolidated bill for one customer) ----------
+async function settleUdhaar(custName){
+  const idsToUpdate = bills.filter(b=>b.customer_name===custName && b.paid===false).map(b=>b.id);
+  if(!idsToUpdate.length) return;
+  await supabaseClient.from('bills').update({paid:true}).in('id', idsToUpdate);
+  bills.forEach(b=>{ if(idsToUpdate.includes(b.id)) b.paid = true; });
+  computeEarnings();
+  renderBills(); renderUdhaar();
+  showSaved();
+}
+
+function buildStatementText(custName, custBills, total){
+  let msg = `${currentClient.shop_name}\nUdhaar Statement — ${custName}\n\n`;
+  custBills.forEach(b=>{
+    const dateStr = new Date(b.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    const itemsStr = b.items.map(it=>it.name+' x'+it.qty).join(', ');
+    msg += `${b.bill_no} (${dateStr}) — ₹${b.total}\n  ${itemsStr}\n`;
+  });
+  msg += `\nTOTAL BAKAYA: ₹${total}`;
+  return msg;
+}
+
+function openStatement(custName){
+  const custBills = bills.filter(b=>b.customer_name===custName && b.paid===false)
+    .sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+  if(!custBills.length) return;
+  const total = custBills.reduce((s,b)=>s+Number(b.total),0);
+  const lastPhone = (custBills.slice().reverse().find(b=>b.customer_phone)?.customer_phone || '').replace(/\D/g,'');
+  const waMessage = buildStatementText(custName, custBills, total);
+  const waLink = lastPhone
+    ? `https://wa.me/91${lastPhone}?text=${encodeURIComponent(waMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+
+  const html = `
+    <div class="st-shop">${currentClient.shop_name}</div>
+    <div class="st-sub">Udhaar Statement</div>
+    <div class="st-divider"></div>
+    <div class="st-cust">${custName}</div>
+    <div class="st-divider"></div>
+    ${custBills.map(b=>`
+      <div class="st-line">
+        <span>${b.bill_no} (${new Date(b.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})})
+          <span class="st-items">${b.items.map(it=>it.name+' x'+it.qty).join(', ')}</span>
+        </span>
+        <span>₹${b.total}</span>
+      </div>
+    `).join('')}
+    <div class="st-total"><span>TOTAL BAKAYA</span><span>₹${total}</span></div>
+    <div class="st-actions">
+      <button class="st-printbtn" id="stPrintBtn">🖨️ Print Karo</button>
+      <a class="st-wabtn" href="${waLink}" target="_blank">📱 WhatsApp Pe Bhejo</a>
+      <button class="st-paidbtn" id="stPaidBtn">✓ Paisa Mil Gaya — Paid Karo</button>
+      <button class="st-closebtn" id="stCloseBtn">Band Karo</button>
+    </div>
+  `;
+  document.getElementById('statementCard').innerHTML = html;
+  document.getElementById('statementModal').classList.add('show');
+
+  document.getElementById('stPrintBtn').addEventListener('click', ()=> window.print());
+  document.getElementById('stCloseBtn').addEventListener('click', closeStatement);
+  document.getElementById('stPaidBtn').addEventListener('click', async ()=>{
+    await settleUdhaar(custName);
+    closeStatement();
+  });
+}
+
+function closeStatement(){
+  document.getElementById('statementModal').classList.remove('show');
+  document.getElementById('statementCard').innerHTML = '';
 }
 
 // ---------- INIT ----------
