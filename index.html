@@ -105,6 +105,8 @@
   .bill-top{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;}
   .bill-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-top:3px;}
   .src-tag{font-size:9.5px;padding:2px 6px;border-radius:8px;color:#fff;background:var(--ink);}
+  .src-tag.pending{background:var(--vermillion);}
+  .src-tag.settled{background:var(--leaf);}
   .no-bills{color:var(--ink-soft);font-size:13px;text-align:center;padding:20px 0;}
 
   .udhaar-group{background:var(--card);border:1px solid var(--vermillion);border-radius:12px;padding:14px;margin-bottom:10px;}
@@ -528,15 +530,27 @@ document.getElementById('confirmBtn').addEventListener('click', async ()=>{
 function renderBills(){
   const box = document.getElementById('billsRows');
   if(!bills.length){ box.innerHTML = '<div class="no-bills">Abhi tak koi bill nahi bana</div>'; return; }
-  box.innerHTML = bills.map(b=>`
+  box.innerHTML = bills.map(b=>{
+    let tagText, tagClass;
+    if(b.paid === false){
+      tagText = 'UDHAAR — BAAKI HAI';
+      tagClass = 'pending';
+    } else if(b.payment_mode === 'udhaar'){
+      tagText = 'PAID (udhaar tha)';
+      tagClass = 'settled';
+    } else {
+      tagText = (b.payment_mode||'').toUpperCase();
+      tagClass = '';
+    }
+    return `
     <div class="bill-row">
       <div class="bill-top"><span>${b.bill_no} — ${b.customer_name}</span><span>₹${b.total}</span></div>
       <div class="bill-sub">
         <span>${new Date(b.created_at).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})} · ${b.items.map(it=>it.name+' x'+it.qty).join(', ')}</span>
-        <span class="src-tag">${b.paid===false ? 'UDHAAR' : (b.payment_mode||'').toUpperCase()}</span>
+        <span class="src-tag ${tagClass}">${tagText}</span>
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 // ---------- UDHAAR (PENDING) VIEW ----------
