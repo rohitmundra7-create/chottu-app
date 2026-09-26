@@ -18,6 +18,7 @@
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
   header h1{font-size:20px;margin:0;font-weight:700;}
   header h1 span{color:var(--vermillion);}
+  .earn-row{display:flex;gap:12px;}
   .earn{text-align:right;}
   .earn .amt{font-size:15px;font-weight:700;color:var(--leaf);}
   .earn .lbl{font-size:9.5px;color:var(--ink-soft);}
@@ -145,7 +146,10 @@
   <header>
     <h1>Chot<span>tu</span></h1>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="earn"><div class="amt" id="todayEarn">₹0</div><div class="lbl">AAJ KI KAMAI</div></div>
+      <div class="earn-row">
+        <div class="earn"><div class="amt" id="todayEarn">₹0</div><div class="lbl">AAJ KI KAMAI</div></div>
+        <div class="earn"><div class="amt" id="monthEarn">₹0</div><div class="lbl">IS MAHINE</div></div>
+      </div>
       <button class="logoutbtn" id="logoutBtn">Logout</button>
     </div>
   </header>
@@ -228,6 +232,31 @@ let cart = {};
 let searchTerm = "";
 let payMode = "cash";
 let todayEarnings = 0;
+let monthEarnings = 0;
+
+function computeEarnings(){
+  const now = new Date();
+  const todayStr = now.toDateString(); // e.g. "Fri Sep 26 2026" — resets automatically at local midnight
+  const curMonth = now.getMonth();
+  const curYear = now.getFullYear();
+
+  todayEarnings = 0;
+  monthEarnings = 0;
+
+  bills.forEach(b=>{
+    if(b.paid === false) return; // udhaar jo abhi tak mila nahi, kamai mein mat jodo
+    const billDate = new Date(b.created_at);
+    if(billDate.toDateString() === todayStr){
+      todayEarnings += Number(b.total);
+    }
+    if(billDate.getMonth() === curMonth && billDate.getFullYear() === curYear){
+      monthEarnings += Number(b.total);
+    }
+  });
+
+  document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+  document.getElementById('monthEarn').textContent = '₹'+monthEarnings;
+}
 
 // ---------- LOGIN ----------
 document.getElementById('loginBtn').addEventListener('click', doLogin);
@@ -281,8 +310,7 @@ async function loadAll(){
   catalog = items || [];
   const { data: billRows } = await supabaseClient.from('bills').select('*').eq('client_id', currentClient.id).order('created_at', {ascending:false});
   bills = billRows || [];
-  todayEarnings = bills.filter(b=>b.payment_mode!=='udhaar').reduce((s,b)=>s+Number(b.total),0);
-  document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+  computeEarnings();
   renderStockPage(); renderGrid(); renderCart(); renderBills(); renderUdhaar();
 }
 
@@ -319,8 +347,7 @@ async function recordBill(source, custName, lineItems, total, mode, custPhone){
   };
   const { data, error } = await supabaseClient.from('bills').insert(bill).select().single();
   if(data) bills.unshift(data);
-  if(mode !== 'udhaar') todayEarnings += total;
-  document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+  computeEarnings();
   renderStockPage(); renderGrid(); renderBills(); renderUdhaar();
   showSaved();
   return data || bill;
@@ -587,9 +614,7 @@ function renderUdhaar(){
       const idsToUpdate = bills.filter(b=>b.customer_name===custName && b.paid===false).map(b=>b.id);
       await supabaseClient.from('bills').update({paid:true}).in('id', idsToUpdate);
       bills.forEach(b=>{ if(idsToUpdate.includes(b.id)) b.paid = true; });
-      const settledTotal = bills.filter(b=>idsToUpdate.includes(b.id)).reduce((s,b)=>s+Number(b.total),0);
-      todayEarnings += settledTotal;
-      document.getElementById('todayEarn').textContent = '₹'+todayEarnings;
+      computeEarnings();
       renderBills(); renderUdhaar();
       showSaved();
     });
