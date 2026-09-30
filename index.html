@@ -60,11 +60,16 @@
   .item-card .qty{font-size:18px;font-weight:700;color:var(--leaf);margin-top:2px;}
   .item-card .qty.low{color:var(--vermillion);}
   .item-card .qty .unit{font-size:10.5px;font-weight:400;color:var(--ink-soft);}
+  .item-card .pp{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
   .stepper{display:flex;align-items:center;gap:5px;}
   .stepper button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:17px;font-weight:700;cursor:pointer;color:var(--ink);}
   .stepper button.minus{color:var(--vermillion);}
   .stepper button.plus{color:var(--leaf);}
   .stepper button.boxbtn{width:auto;padding:0 10px;font-size:11px;color:var(--turmeric);border-color:var(--turmeric);}
+  .stockaddbtn{width:100%;padding:8px;background:none;border:1.5px dashed var(--leaf);border-radius:7px;color:var(--leaf);font-size:11.5px;font-weight:600;cursor:pointer;margin-top:8px;}
+  .stockadd-form{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;}
+  .stockadd-form input{width:100%;padding:8px;margin-bottom:6px;border:1px solid var(--line);border-radius:6px;font-size:13px;}
+  .stockadd-form .saSaveBtn{width:100%;padding:9px;background:var(--leaf);color:#fff;border:none;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;}
 
   .searchrow{display:flex;gap:8px;margin-bottom:12px;}
   .searchbox{flex:1;position:relative;}
@@ -225,6 +230,7 @@
         <input type="text" id="newItemEmoji" placeholder="Emoji (optional) 📦">
         <input type="number" id="newItemStock" placeholder="Abhi kitna stock hai">
       </div>
+      <input type="number" id="newItemPurchasePrice" placeholder="Purchase price (₹ per piece) — jitne mein khareeda">
       <input type="number" id="newItemPackSize" placeholder="1 box/packet mein kitne piece? (jaise cigarette ke liye 20) — chhod do agar loose nahi bikta">
       <button class="savebtn" id="saveNewItemBtn">Item Save Karo</button>
     </div>
@@ -414,11 +420,18 @@ function renderStockPage(){
       <div class="info">
         <div class="nm">${item.name}</div>
         <div class="qty ${item.stock <= item.low_stock_threshold ? 'low' : ''}">${item.stock} <span class="unit">${item.unit}</span></div>
+        ${item.purchase_price ? `<div class="pp">Purchase: ₹${item.purchase_price}/${item.unit} · Margin: ₹${(Number(item.price)-Number(item.purchase_price)).toFixed(2)}</div>` : ''}
       </div>
       <div class="stepper">
         <button class="minus" data-id="${item.id}" data-dir="${-1}">−</button>
         <button class="plus" data-id="${item.id}" data-dir="1">+</button>
         ${item.pack_size && item.pack_size > 1 ? `<button class="boxbtn" data-id="${item.id}" data-dir="${item.pack_size}">+1 box (${item.pack_size})</button>` : ''}
+      </div>
+      <button class="stockaddbtn" data-id="${item.id}">📥 Naya Maal Aaya (Stock + Purchase Price)</button>
+      <div class="stockadd-form" id="stockaddform-${item.id}" style="display:none;">
+        <input type="number" class="saQty" placeholder="Kitna maal aaya (qty)">
+        <input type="number" class="saPrice" placeholder="Purchase price (₹ per ${item.unit})" value="${item.purchase_price||''}">
+        <button class="saSaveBtn" data-id="${item.id}">Save Karo</button>
       </div>
     </div>
   `).join('');
@@ -430,6 +443,36 @@ function renderStockPage(){
       item.stock = Math.max(0, Number(item.stock) + dir);
       renderStockPage(); renderGrid();
       await supabaseClient.from('items').update({stock:item.stock}).eq('id', id);
+      showSaved();
+    });
+  });
+  listEl.querySelectorAll('.stockaddbtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const form = document.getElementById('stockaddform-'+btn.dataset.id);
+      form.style.display = form.style.display === 'block' ? 'none' : 'block';
+    });
+  });
+  listEl.querySelectorAll('.saSaveBtn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const form = document.getElementById('stockaddform-'+id);
+      const qty = parseFloat(form.querySelector('.saQty').value) || 0;
+      const pprice = parseFloat(form.querySelector('.saPrice').value) || 0;
+      if(qty <= 0){ alert('Pehle ye batao kitna maal aaya (qty)'); return; }
+      const item = catalog.find(c=>c.id===id);
+      const newStock = Math.max(0, Number(item.stock) + qty);
+      item.stock = newStock;
+      if(pprice > 0) item.purchase_price = pprice;
+      await supabaseClient.from('items').update({stock:newStock, purchase_price:item.purchase_price||0}).eq('id', id);
+      await supabaseClient.from('stock_purchases').insert({
+        client_id: currentClient.id,
+        item_id: id,
+        item_name: item.name,
+        qty: qty,
+        purchase_price: pprice,
+        total_cost: qty * pprice
+      });
+      renderStockPage(); renderGrid();
       showSaved();
     });
   });
@@ -452,20 +495,31 @@ document.getElementById('saveNewItemBtn').addEventListener('click', async ()=>{
   const unit = document.getElementById('newItemUnit').value.trim() || 'piece';
   const emoji = document.getElementById('newItemEmoji').value.trim() || '📦';
   const stock = parseFloat(document.getElementById('newItemStock').value) || 0;
+  const purchasePrice = parseFloat(document.getElementById('newItemPurchasePrice').value) || 0;
   const packSize = parseFloat(document.getElementById('newItemPackSize').value) || 1;
 
   if(!name){ alert('Item ka naam daalo'); return; }
 
   const { data, error } = await supabaseClient.from('items').insert({
     client_id: currentClient.id,
-    name, price, unit, emoji, stock, pack_size: packSize
+    name, price, unit, emoji, stock, purchase_price: purchasePrice, pack_size: packSize
   }).select().single();
 
   if(error){ alert('Error: ' + error.message); return; }
   catalog.push(data);
+  if(stock > 0 && purchasePrice > 0){
+    await supabaseClient.from('stock_purchases').insert({
+      client_id: currentClient.id,
+      item_id: data.id,
+      item_name: data.name,
+      qty: stock,
+      purchase_price: purchasePrice,
+      total_cost: stock * purchasePrice
+    });
+  }
   renderStockPage(); renderGrid();
   document.getElementById('addItemForm').style.display = 'none';
-  ['newItemName','newItemPrice','newItemUnit','newItemEmoji','newItemStock','newItemPackSize'].forEach(id=>{
+  ['newItemName','newItemPrice','newItemUnit','newItemEmoji','newItemStock','newItemPurchasePrice','newItemPackSize'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   showSaved();
